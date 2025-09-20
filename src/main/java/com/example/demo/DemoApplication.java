@@ -15,6 +15,6 @@ public class DemoApplication {
 
 	@RequestMapping("/")
   public String home() {
-    return "Hello world! ht This weddb application cffreated uisng java spring boot framework";
+    return "Hello world! ht This ramam weddb application cffreated uisng java spring boot framework";
   }
 }
