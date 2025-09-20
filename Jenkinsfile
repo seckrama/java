@@ -54,11 +54,9 @@ pipeline {
         }
 
          stage('Deploy to Render') {
-            steps {
-                withCredentials([string(credentialsId: 'render-hook-java', variable: 'RENDER_HOOK_URL')]) {
-                    sh 'curl -X POST "$RENDER_HOOK_URL"'
-                }
-            }
+             steps {
+        sh 'curl -X POST "$RENDER_DEPLOY_HOOK"'
+    }
         } 
     }
 
