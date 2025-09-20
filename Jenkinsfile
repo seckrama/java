@@ -1,74 +1,54 @@
 pipeline {
     agent any
 
-    environment {
-        DOCKER_HUB_REPO = 'ramaseck2/projet_java'
-        DOCKER_HUB_CREDENTIALS = 'docker-hub'
-        RENDER_DEPLOY_HOOK = 'render-webhook'
-        RENDER_APP_URL = 'render-app-url'
-        MAVEN_OPTS = '-Dmaven.repo.local=/tmp/.m2/repository'
+    options {
+        timestamps()
     }
 
     stages {
         stage('Checkout') {
             steps {
-                echo '🔄 Récupération du code source...'
                 checkout scm
             }
         }
 
-        stage('Build & Test') {
-            steps {
-                echo '🔨 Construction et tests du projet...'
-                sh '''
-                    # Utiliser le wrapper Maven
-                    chmod +x ./mvnw
-                    ./mvnw clean compile test -Dmaven.test.failure.ignore=true
-                '''
-            }
-        }
+        stage('Build with Maven') {
+           steps {
 
-        stage('Package') {
-            steps {
-                echo '📦 Création du package JAR...'
-                sh '''
-                    ./mvnw clean package -DskipTests
-                '''
-                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
-            }
+                       sh './mvnw clean package'
+
+               }
         }
 
         stage('Build & Push Docker Image') {
             steps {
-                echo '🐳 Construction et push de l\'image Docker...'
-                script {
-                    def imageName = "${DOCKER_HUB_REPO}:${BUILD_NUMBER}"
-                    def latestImageName = "${DOCKER_HUB_REPO}:latest"
+                withCredentials([usernamePassword(credentialsId: 'docker-hub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    script {
+                        def appName = 'demo' // Nom de l'application
+                        def branchName = env.BRANCH_NAME ?: env.GIT_BRANCH ?: 'latest'
+                        def safeTag = branchName.replaceAll('[^A-Za-z0-9._-]', '-')
+                        def dockerImage = "${DOCKER_USER}/${appName}:${safeTag}"
 
-                    dockerImage = docker.build(imageName)
+                        sh """
+                            set -e
+                            echo "Building Docker image e: ${dockerImage}"
+                            docker build -t "${dockerImage}" .
 
-                    docker.withRegistry('https://registry.hub.docker.com', DOCKER_HUB_CREDENTIALS) {
-                        dockerImage.push("${BUILD_NUMBER}")
-                        dockerImage.push("latest")
+                            echo "Logging into Docker Hub..."
+                            echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
+
+                            echo "Pushing Docker image: ${dockerImage}"
+                            docker push "${dockerImage}"
+                        """
                     }
-
-                    // Nettoyage
-                    sh "docker rmi ${imageName} ${latestImageName} || true"
                 }
             }
         }
 
-       /*  stage('Deploy to Render') {
+      /*   stage('Deploy to Render') {
             steps {
-                echo '🚀 Déploiement sur Render...'
-                script {
-                    withCredentials([string(credentialsId: RENDER_DEPLOY_HOOK, variable: 'RENDER_WEBHOOK')]) {
-                        sh '''
-                            curl -X POST "$RENDER_WEBHOOK" \
-                                -H "Content-Type: application/json" \
-                                -d '{"branch": "main"}'
-                        '''
-                    }
+                withCredentials([string(credentialsId: 'render-hook-java', variable: 'RENDER_HOOK_URL')]) {
+                    sh 'curl -X POST "$RENDER_HOOK_URL"'
                 }
             }
         } */
@@ -76,13 +56,7 @@ pipeline {
 
     post {
         always {
-            deleteDir()
-        }
-        success {
-            echo '🎉 Pipeline exécuté avec succès!'
-        }
-        failure {
-            echo '❌ Pipeline échoué!'
+            cleanWs()
         }
     }
 }
