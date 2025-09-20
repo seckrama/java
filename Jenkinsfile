@@ -1,9 +1,16 @@
 pipeline {
     agent any
 
+     environment {
+       
+        RENDER_DEPLOY_HOOK = "https://api.render.com/deploy/srv-d37am57fte5s73b43850?key=XK7WYEmqmgA" // ton deploy hook
+    }
+
     options {
         timestamps()
     }
+
+
 
     stages {
         stage('Checkout') {
@@ -46,13 +53,13 @@ pipeline {
             }
         }
 
-      /*   stage('Deploy to Render') {
+         stage('Deploy to Render') {
             steps {
                 withCredentials([string(credentialsId: 'render-hook-java', variable: 'RENDER_HOOK_URL')]) {
                     sh 'curl -X POST "$RENDER_HOOK_URL"'
                 }
             }
-        } */
+        } 
     }
 
     post {
