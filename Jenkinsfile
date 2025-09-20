@@ -9,7 +9,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/seckrama/java-devops.git',
+                git branch: 'main', url: 'https://github.com/seckrama/java.git',
                 credentialsId: 'github-token'
 
             }
